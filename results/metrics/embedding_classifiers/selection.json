@@ -1,0 +1,18 @@
+{
+  "selection_split": "validation",
+  "primary_metric": "f1",
+  "tie_breaker": "roc_auc",
+  "probability_threshold": 0.5,
+  "selected_representation": "mean",
+  "selected_validation_metrics": {
+    "accuracy": 0.8916139240506329,
+    "precision": 0.8818897637795275,
+    "recall": 0.8533333333333334,
+    "f1": 0.867376573088093,
+    "roc_auc": 0.9479064372704427
+  },
+  "logistic_regression_C": 1.0,
+  "class_weight": "balanced",
+  "random_seed": 42,
+  "test_set_evaluated": false
+}

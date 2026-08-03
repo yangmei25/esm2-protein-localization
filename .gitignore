@@ -1,0 +1,19 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Personal learning and exploratory notebooks.
+notebooks_for_me/
+
+# Keep downloaded data and trained artifacts out of Git.
+data/raw/*
+data/processed/*
+!data/raw/README.md
+!data/processed/README.md
+results/models/*
+!results/models/README.md
+results/embeddings/*
+!results/embeddings/README.md

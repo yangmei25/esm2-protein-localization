@@ -1,0 +1,11 @@
+project_name: esm2-protein-localization
+task: binary_classification
+model_name: facebook/esm2_t6_8M_UR50D
+positive_label: membrane
+negative_label: soluble
+max_residues: 1022
+pooling: mean
+classifier: logistic_regression
+random_seed: 42
+primary_metric: f1
+

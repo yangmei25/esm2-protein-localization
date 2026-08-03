@@ -1,0 +1,13 @@
+# Versions will be locked after the first verified environment setup.
+torch
+transformers
+accelerate
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+joblib
+tqdm
+pytest
+
