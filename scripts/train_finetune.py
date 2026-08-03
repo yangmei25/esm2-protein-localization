@@ -28,7 +28,7 @@ from sklearn.metrics import (
 )
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer, get_linear_schedule_with_warmup
 
 
@@ -267,11 +267,18 @@ def train(args: argparse.Namespace) -> None:
     seed_everything(args.seed)
     device = choose_device(args.device)
     amp_enabled, amp_dtype = resolve_amp(device, args.mixed_precision)
+    print(f"Loading dataset: {args.data}", flush=True)
     frame = load_data(args.data)
     train_frame = frame[frame["split"] == "train"].reset_index(drop=True)
     validation_frame = frame[frame["split"] == "validation"].reset_index(drop=True)
     test_frame = frame[frame["split"] == "test"].reset_index(drop=True)
 
+    print(
+        f"Dataset ready — train: {len(train_frame)}, validation: "
+        f"{len(validation_frame)}, test: {len(test_frame)}",
+        flush=True,
+    )
+    print(f"Loading pretrained model: {args.model_name}", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     collate_fn = make_collate_fn(tokenizer)
     generator = torch.Generator().manual_seed(args.seed)
@@ -302,6 +309,7 @@ def train(args: argparse.Namespace) -> None:
     )
 
     model = ESM2MeanPoolingClassifier(args.model_name, args.dropout).to(device)
+    print(f"Model ready on {device}; starting training setup", flush=True)
     label_counts = np.bincount(train_frame["label"].to_numpy(), minlength=2)
     class_weights = len(train_frame) / (2.0 * label_counts)
     loss_fn = nn.CrossEntropyLoss(
