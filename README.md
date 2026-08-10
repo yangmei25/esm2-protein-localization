@@ -102,7 +102,14 @@ statistically detectable on the paired validation predictions (McNemar
 `p = 0.00017`). This comparison is a useful biological baseline, but it does not
 replace evaluation under homology-controlled splits.
 
-![Validation ROC curves for the hydrophobicity Logistic Regression and Random Forest baselines](results/figures/validation_roc_hydrophobicity_classifiers.png)
+### ROC comparison on a shared validation cohort
+
+For a fair visual comparison, the classical Random Forest was retrained on the
+ESM-compatible training split and all three methods were evaluated on the same
+1,264 validation proteins. The figure therefore differs from the full-length
+classical-baseline table above, which includes longer proteins.
+
+![Validation ROC comparison of the classical Random Forest, frozen mean ESM-2, and fine-tuned ESM-2](results/figures/validation_roc_model_comparison.png)
 
 ### Exploratory fine-tuned test result
 

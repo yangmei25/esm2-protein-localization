@@ -18,5 +18,8 @@ Implemented pipeline scripts:
    the fine-tuned confusion matrix used in the README.
 9. `download_checkpoint.py` downloads and SHA-256-verifies the published model
    checkpoint without adding generated weights to Git history.
+10. `plot_validation_roc_comparison.py` compares the strongest classical
+    baseline, frozen mean ESM-2, and fine-tuned ESM-2 on the same validation
+    proteins.
 
 Each script will have a single responsibility and a `--help` interface.

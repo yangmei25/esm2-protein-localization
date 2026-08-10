@@ -1,0 +1,11 @@
+{
+  "split": "validation",
+  "proteins": 1264,
+  "shared_cohort": true,
+  "classical_model_note": "Random Forest retrained on the ESM-compatible training split using the same 35 handcrafted features and fixed hyperparameters.",
+  "roc_auc": {
+    "Classical Random Forest": 0.9078084928152585,
+    "Frozen ESM-2 + Logistic Regression": 0.9479064372704427,
+    "Fine-tuned ESM-2": 0.9686590630839615
+  }
+}
