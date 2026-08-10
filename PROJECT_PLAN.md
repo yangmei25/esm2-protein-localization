@@ -1,41 +1,23 @@
-# Project Plan
+# Project plan and completion status
 
-## Project title
+## Objective
 
-ESM-2 Frozen Embeddings for Protein Localization Prediction
+Predict whether one amino-acid sequence is membrane-associated (`1`) or soluble
+(`0`) and return a membrane probability plus predicted class.
 
-## Minimal-version objective
+## Implemented model tracks
 
-Build a binary classifier that predicts whether a protein is membrane-associated
-or soluble from its amino-acid sequence.
+1. Thirty-five full-length composition and hydrophobicity features with
+   Logistic Regression and Random Forest.
+2. Frozen `facebook/esm2_t6_8M_UR50D` first-token, residue-mean, and residue-max
+   embeddings with Logistic Regression.
+3. End-to-end fine-tuning of ESM-2 8M with residue mean pooling and a binary
+   classification head.
 
-## Input and output
-
-- Input: one amino-acid sequence
-- Output: membrane probability and predicted class
-- Label `0`: soluble
-- Label `1`: membrane
-
-## Model design
-
-```text
-Protein sequence
-      ↓
-facebook/esm2_t6_8M_UR50D (frozen)
-      ↓
-Mean-pooled sequence embedding
-      ↓
-Logistic Regression
-      ↓
-Membrane probability
-```
-
-ESM-2 will remain frozen in the minimal version. End-to-end fine-tuning belongs
-to the intermediate version and will not be added until the frozen pipeline works.
+The ESM workflows exclude sequences longer than 1,022 residues without
+truncation. The classical baseline retains full-length sequences.
 
 ## Data contract
-
-The cleaned dataset must contain:
 
 | Column | Meaning |
 |---|---|
@@ -43,44 +25,44 @@ The cleaned dataset must contain:
 | `sequence` | Amino-acid sequence |
 | `label` | `0` for soluble or `1` for membrane |
 | `split` | `train`, `validation`, or `test` |
-| `length` | Number of amino acids before tokenization |
+| `original_length` | Residues before tokenization |
 
-## Evaluation
+## Evaluation policy
 
-- Primary metric: F1
+- Primary selection metric: validation F1
 - Secondary metrics: accuracy, precision, recall, and ROC-AUC
-- Required figure: confusion matrix
-- The test set will be evaluated only after model selection is complete.
+- Probability threshold: 0.5
+- The official test set was inspected during exploratory analysis; all current
+  test results must remain labeled exploratory.
+- Saved predictions and machine-readable metrics are the source of reported
+  numbers.
 
-## Initial constraints
+## Completed
 
-- Model: `facebook/esm2_t6_8M_UR50D`
-- Maximum protein length: 1,022 amino acids
-- Random seed: 42
-- First split: stratified train/validation/test split
-- Long-sequence and homology-leakage limitations must be documented
-- No performance number will be reported unless produced by our experiment
+- [x] Dataset source and citation documented
+- [x] Raw data preserved locally and excluded from Git
+- [x] Sequence, label, duplicate, and split validation
+- [x] Reproducible fixed train/validation/test splits
+- [x] Full-length biological-feature baselines
+- [x] Three frozen ESM-2 representations and classifiers
+- [x] End-to-end ESM-2 8M fine-tuning
+- [x] Validation and exploratory test evaluation
+- [x] Single-sequence command-line inference
+- [x] Public results table and ROC figure
+- [x] Pinned local and Colab dependency specifications
+- [x] Offline automated test suite
+- [x] BLASTP cross-split homology audit
+- [x] Explicit disclosure that no dataset redistribution license was identified
 
-## Definition of done
+## Remaining scientific work
 
-- [ ] A public dataset and its license are documented
-- [ ] Raw data is preserved unchanged
-- [ ] Sequences and labels are validated
-- [ ] Train, validation, and test splits are reproducible
-- [ ] Frozen ESM-2 embeddings are extracted and cached
-- [ ] Logistic Regression is trained on training embeddings
-- [ ] Validation data is used for model decisions
-- [ ] Final metrics are calculated on the test set
-- [ ] A confusion matrix is generated
-- [ ] A single-sequence inference script works
-- [ ] README contains real results and known limitations
+- [ ] Confirm dataset redistribution terms with the data provider
+- [ ] Repeat complete fine-tuning with multiple random seeds
+- [ ] Construct cluster-based homology-aware train/validation/test splits
+- [ ] Rerun every baseline and ESM model on the homology-aware protocol
+- [ ] Evaluate the selected model once on a separately sourced external dataset
+- [ ] Report uncertainty intervals across independent runs or grouped folds
 
-## Later extensions—not part of the minimal version
-
-- Amino-acid-composition baseline
-- End-to-end ESM-2 fine-tuning
-- Homology-aware splitting
-- Multiple random seeds
-- ESM-2 8M versus 35M comparison
-- Phage-specific prediction task
-
+These remaining experiments would strengthen research claims but are beyond the
+mentor's minimum deliverable of a clean repository, documented results, one
+figure, and runnable single-sequence inference.

@@ -19,10 +19,12 @@ The data pipeline, three frozen-embedding experiments, biological baselines,
 and validation-stage fine-tuning are complete. The best current validation
 result is the fine-tuned ESM-2 model with **0.900 F1** and **0.969 ROC-AUC**.
 
-Remaining work includes packaging single-sequence inference, adding automated
-tests, documenting dataset provenance more completely, and evaluating with a
-homology-aware split. Fine-tuned test evaluation has intentionally not been
-reported yet.
+Single-sequence inference, a 24-test offline suite, reproducible classical
+baselines, and a pinned Python environment are complete. Remaining work includes
+documenting dataset provenance more completely, adding an end-to-end checkpoint
+integration test, and evaluating with a homology-aware split. Fine-tuned test
+evaluation is reported as exploratory because the test split had already been
+inspected earlier in the project.
 
 ## Pipeline
 
@@ -93,10 +95,24 @@ Fine-tuning improved validation F1 by about **3.25 percentage points** and
 ROC-AUC by about **2.08 percentage points** over frozen mean embeddings. Its
 validation confusion counts were TN = 720, FP = 19, FN = 80, and TP = 445.
 
+![Fine-tuned ESM-2 validation confusion matrix](results/figures/finetuned_validation_confusion_matrix.png)
+
 The Random Forest improvement over the hydrophobicity Logistic Regression was
 statistically detectable on the paired validation predictions (McNemar
 `p = 0.00017`). This comparison is a useful biological baseline, but it does not
 replace evaluation under homology-controlled splits.
+
+![Validation ROC curves for the hydrophobicity Logistic Regression and Random Forest baselines](results/figures/validation_roc_hydrophobicity_classifiers.png)
+
+### Exploratory fine-tuned test result
+
+| Test N | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---:|---:|---:|---:|---:|---:|
+| 1,571 | 0.916 | 0.921 | 0.877 | 0.898 | 0.961 |
+
+At threshold 0.5, the test confusion counts were TN = 855, FP = 50, FN = 82,
+and TP = 584. These sum to all 1,571 test proteins. The result is encouragingly
+close to validation performance, but it is not a fully untouched final estimate.
 
 ## Repository structure
 
@@ -111,10 +127,12 @@ replace evaluation under homology-controlled splits.
 │   ├── prepare_data.py
 │   ├── extract_embeddings.py
 │   ├── train_embedding_classifiers.py
-│   └── train_finetune.py
+│   ├── train_finetune.py
+│   ├── train_classical_baselines.py
+│   └── predict.py
 ├── src/esm2_localization/      Reusable package code
 ├── results/                    Metrics, figures, and local model artifacts
-└── tests/                      Test suite scaffold
+└── tests/                      Offline automated test suite
 ```
 
 The public notebooks provide a high-level walkthrough and a Colab fine-tuning
@@ -124,7 +142,8 @@ implementation.
 
 ## Setup
 
-Python 3.10 or 3.11 is recommended.
+Python 3.11.5 and the direct dependency versions in `requirements.txt` form the
+verified local environment.
 
 ```bash
 git clone https://github.com/yangmei25/esm2-protein-localization.git
@@ -138,6 +157,13 @@ Place the original DeepLoc FASTA at the path described in
 [`data/raw/README.md`](data/raw/README.md). Large data, cached embeddings, and
 model checkpoints should remain local and should not be committed to GitHub.
 
+After the `model-v1.0` GitHub Release is published, download the fine-tuned
+checkpoint and verify its SHA-256 checksum with:
+
+```bash
+python scripts/download_checkpoint.py
+```
+
 ## Reproduce the frozen-embedding workflow
 
 ```bash
@@ -149,6 +175,20 @@ python scripts/train_embedding_classifiers.py
 Use `python <script> --help` to see paths and optional settings. Embedding
 extraction can be smoke-tested first with `--limit 100`; replacing an existing
 cache requires the explicit `--overwrite` flag.
+
+## Reproduce the classical baselines
+
+The classical workflow operates directly on the full-length raw DeepLoc FASTA,
+including proteins longer than ESM-2's limit:
+
+```bash
+python scripts/train_classical_baselines.py --overwrite
+```
+
+This trains both classifiers, writes public metrics and predictions under
+`results/metrics/classical_baselines/`, saves generated model files under the
+Git-ignored `results/models/classical_baselines/`, and regenerates the validation
+ROC figure used in this README.
 
 ## Fine-tune in Google Colab
 
@@ -182,25 +222,57 @@ python scripts/train_finetune.py \
   --test-only
 ```
 
+## Predict one protein
+
+Use the selected local checkpoint to predict a direct amino-acid sequence:
+
+```bash
+python scripts/predict.py \
+  --protein-id example_protein \
+  --sequence "MKTIIALSYIFCLVFADYKDDDDK" \
+  --device auto
+```
+
+Alternatively, supply a single-record FASTA file:
+
+```bash
+python scripts/predict.py --fasta protein.fasta --device auto
+```
+
+The command prints JSON containing the predicted label, membrane and soluble
+probabilities, sequence length, decision threshold, model, checkpoint epoch,
+and device. Sequences longer than 1,022 residues are rejected rather than
+silently truncated.
+
 ## Limitations
 
-- Random train/validation/test splits may place homologous proteins in multiple
-  splits and inflate performance.
+- BLASTP found training homologs at ≥30% identity and ≥80% shorter-sequence
+  coverage for 55.8% of validation proteins and 13.6% of test proteins. The
+  random validation split is therefore especially vulnerable to optimistic
+  performance estimates.
 - Proteins longer than 1,022 residues are excluded from ESM-2 experiments.
-- Dataset labels and provenance require clearer documentation before treating
-  the model as a scientific benchmark.
+- No explicit license for redistribution of the DeepLoc 1.0 dataset was
+  identified, so raw data are not distributed in this repository.
 - The official test split has already been used for exploratory analysis.
+- Fine-tuning currently uses one random seed; run multiple complete training
+  seeds before claiming that the measured improvement is stable.
 - Current metrics describe this dataset only; they do not establish reliability
   on proteins from a different organism, database, or experimental protocol.
 - Predictions are computational hypotheses and do not replace experimental
   localization evidence.
 
+See [`docs/SCIENTIFIC_LIMITATIONS.md`](docs/SCIENTIFIC_LIMITATIONS.md) for the
+full audit status and research-quality roadmap. Reproduce the similarity audit
+with:
+
+```bash
+python scripts/audit_homology.py --overwrite
+```
+
 ## Next steps
 
-1. Add a documented `predict.py` interface for new protein sequences.
-2. Add unit and smoke tests for preprocessing, pooling, and inference.
-3. Make the handcrafted-feature baselines reproducible outside personal
-   notebooks.
-4. Pin a verified dependency environment.
-5. Create similarity-clustered, homology-aware data splits and rerun all models.
-6. Evaluate the selected model on a genuinely external dataset.
+1. Add an integration test for checkpoint loading and inference.
+2. Repeat fine-tuning with multiple random seeds and report mean ± standard
+   deviation.
+3. Create similarity-clustered, homology-aware data splits and rerun all models.
+4. Evaluate the selected model on a genuinely external dataset.

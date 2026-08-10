@@ -11,8 +11,10 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import platform
 import random
 from contextlib import nullcontext
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -145,6 +147,30 @@ class ESM2MeanPoolingClassifier(nn.Module):
         float_mask = residue_mask.unsqueeze(-1).to(hidden.dtype)
         pooled = (hidden * float_mask).sum(dim=1) / float_mask.sum(dim=1).clamp_min(1)
         return self.classifier(self.dropout(pooled))
+
+
+def load_model_state_compatibly(
+    model: ESM2MeanPoolingClassifier, state_dict: dict[str, torch.Tensor]
+) -> None:
+    """Load checkpoints across ESM versions with one guarded compatibility case.
+
+    Older Transformers releases register an unused absolute-position tensor
+    even when ESM-2 is configured to use rotary positions. Newer releases omit
+    that tensor. Permit only this known missing key; reject every other state
+    mismatch so evaluation cannot silently use partially initialized weights.
+    """
+    incompatible = model.load_state_dict(state_dict, strict=False)
+    allowed_missing = set()
+    if getattr(model.encoder.config, "position_embedding_type", None) == "rotary":
+        allowed_missing.add("encoder.embeddings.position_embeddings.weight")
+
+    unexpected_missing = set(incompatible.missing_keys) - allowed_missing
+    if unexpected_missing or incompatible.unexpected_keys:
+        raise RuntimeError(
+            "Checkpoint is incompatible with the current model: "
+            f"missing={sorted(unexpected_missing)}, "
+            f"unexpected={sorted(incompatible.unexpected_keys)}"
+        )
 
 
 def classification_metrics(labels: np.ndarray, probabilities: np.ndarray) -> dict:
@@ -322,7 +348,7 @@ def train(args: argparse.Namespace) -> None:
         if not best_checkpoint.exists():
             raise FileNotFoundError(f"Best checkpoint not found: {best_checkpoint}")
         checkpoint = torch.load(best_checkpoint, map_location=device, weights_only=False)
-        model.load_state_dict(checkpoint["model_state_dict"])
+        load_model_state_compatibly(model, checkpoint["model_state_dict"])
         test_metrics, test_predictions = evaluate(
             model, test_loader, loss_fn, device, amp_enabled, amp_dtype
         )
@@ -364,6 +390,14 @@ def train(args: argparse.Namespace) -> None:
         "test_proteins": len(test_frame),
         "class_weights": class_weights.tolist(),
         "trainable_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "software_versions": {
+            "python": platform.python_version(),
+            "torch": torch.__version__,
+            "transformers": version("transformers"),
+            "pandas": pd.__version__,
+            "numpy": np.__version__,
+            "scikit_learn": version("scikit-learn"),
+        },
     }
     (args.output_dir / "run_config.json").write_text(
         json.dumps(run_config, indent=2) + "\n", encoding="utf-8"
@@ -446,7 +480,7 @@ def train(args: argparse.Namespace) -> None:
                 break
 
     checkpoint = torch.load(best_checkpoint, map_location=device, weights_only=False)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    load_model_state_compatibly(model, checkpoint["model_state_dict"])
     print(
         f"Best checkpoint: epoch {checkpoint['epoch']}, "
         f"validation F1={checkpoint['validation_metrics']['f1']:.4f}"

@@ -1,0 +1,32 @@
+{
+  "data": "/content/esm2-protein-localization/data/processed/deeploc_binary.csv",
+  "output_dir": "/content/drive/MyDrive/esm2-protein-localization/finetune-results/esm2_t6_8M_mean",
+  "model_name": "facebook/esm2_t6_8M_UR50D",
+  "epochs": 5,
+  "batch_size": 4,
+  "eval_batch_size": 8,
+  "gradient_accumulation_steps": 4,
+  "learning_rate": 2e-05,
+  "weight_decay": 0.01,
+  "warmup_ratio": 0.1,
+  "dropout": 0.1,
+  "max_grad_norm": 1.0,
+  "early_stopping_patience": 2,
+  "seed": 42,
+  "num_workers": 2,
+  "device": "cuda",
+  "mixed_precision": "auto",
+  "evaluate_test": false,
+  "test_only": false,
+  "device_used": "cuda",
+  "amp_enabled": true,
+  "amp_dtype": "torch.bfloat16",
+  "train_proteins": 5055,
+  "validation_proteins": 1264,
+  "test_proteins": 1571,
+  "class_weights": [
+    0.8547514372675008,
+    1.2047187797902765
+  ],
+  "trainable_parameters": 7409723
+}

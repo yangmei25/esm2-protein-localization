@@ -1,0 +1,80 @@
+{
+  "method": "BLASTP cross-split similarity audit",
+  "blast_version": "blastp: 2.15.0+",
+  "data": "data/processed/deeploc_binary.csv",
+  "training_proteins": 5055,
+  "evalue": 0.001,
+  "max_target_sequences_per_query": 10,
+  "interpretation": "This is a diagnostic of the existing split, not a homology-aware split or an independent performance estimate.",
+  "all_queries": {
+    "query_proteins": 2835,
+    "queries_with_any_blast_hit": 1738,
+    "threshold_definition": "percent identity at or above threshold and alignment covering at least 80% of the shorter sequence",
+    "threshold_counts": {
+      "identity_at_least_30": {
+        "queries": 918,
+        "fraction": 0.3238095238095238
+      },
+      "identity_at_least_50": {
+        "queries": 579,
+        "fraction": 0.20423280423280424
+      },
+      "identity_at_least_70": {
+        "queries": 379,
+        "fraction": 0.13368606701940036
+      },
+      "identity_at_least_90": {
+        "queries": 175,
+        "fraction": 0.06172839506172839
+      }
+    }
+  },
+  "by_split": {
+    "validation": {
+      "query_proteins": 1264,
+      "queries_with_any_blast_hit": 952,
+      "threshold_definition": "percent identity at or above threshold and alignment covering at least 80% of the shorter sequence",
+      "threshold_counts": {
+        "identity_at_least_30": {
+          "queries": 705,
+          "fraction": 0.557753164556962
+        },
+        "identity_at_least_50": {
+          "queries": 486,
+          "fraction": 0.38449367088607594
+        },
+        "identity_at_least_70": {
+          "queries": 343,
+          "fraction": 0.2713607594936709
+        },
+        "identity_at_least_90": {
+          "queries": 170,
+          "fraction": 0.13449367088607594
+        }
+      }
+    },
+    "test": {
+      "query_proteins": 1571,
+      "queries_with_any_blast_hit": 786,
+      "threshold_definition": "percent identity at or above threshold and alignment covering at least 80% of the shorter sequence",
+      "threshold_counts": {
+        "identity_at_least_30": {
+          "queries": 213,
+          "fraction": 0.13558243157224698
+        },
+        "identity_at_least_50": {
+          "queries": 93,
+          "fraction": 0.05919796308084023
+        },
+        "identity_at_least_70": {
+          "queries": 36,
+          "fraction": 0.022915340547422024
+        },
+        "identity_at_least_90": {
+          "queries": 5,
+          "fraction": 0.003182686187141948
+        }
+      }
+    }
+  }
+}

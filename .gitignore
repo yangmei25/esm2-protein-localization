@@ -17,3 +17,15 @@ results/models/*
 !results/models/README.md
 results/embeddings/*
 !results/embeddings/README.md
+
+# Fine-tuning checkpoints are large and remain local or in Google Drive.
+# Lightweight configurations, histories, metrics, and predictions are tracked.
+results/finetune/**/*.pt
+
+# Query-level BLAST alignments are reproducible generated data; track summary only.
+results/homology_audit/cross_split_blast_hits.csv
+
+# Per-protein outputs retain source identifiers/labels; publish aggregates only.
+results/finetune/**/best_validation_predictions.csv
+results/finetune/**/test_predictions.csv
+results/metrics/classical_baselines/predictions.csv

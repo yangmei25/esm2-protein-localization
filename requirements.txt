@@ -1,13 +1,10 @@
-# Versions will be locked after the first verified environment setup.
-torch
-transformers
-accelerate
-pandas
-numpy
-scikit-learn
-matplotlib
-seaborn
-joblib
-tqdm
-pytest
-
+# Verified with Python 3.11.5 on 2026-08-10.
+# Direct runtime dependencies are pinned for repeatable local installation.
+torch==2.12.1
+transformers==4.32.1
+pandas==2.0.3
+numpy==1.24.3
+scikit-learn==1.9.0
+matplotlib==3.7.2
+joblib==1.5.3
+tqdm==4.65.0
