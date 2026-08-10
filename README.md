@@ -97,11 +97,6 @@ validation confusion counts were TN = 720, FP = 19, FN = 80, and TP = 445.
 
 ![Fine-tuned ESM-2 validation confusion matrix](results/figures/finetuned_validation_confusion_matrix.png)
 
-The Random Forest improvement over the hydrophobicity Logistic Regression was
-statistically detectable on the paired validation predictions (McNemar
-`p = 0.00017`). This comparison is a useful biological baseline, but it does not
-replace evaluation under homology-controlled splits.
-
 ### ROC comparison on a shared validation cohort
 
 For a fair visual comparison, the classical Random Forest was retrained on the
