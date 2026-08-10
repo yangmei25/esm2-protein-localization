@@ -27,8 +27,8 @@ under:
 MyDrive/esm2-protein-localization/finetune-results/esm2_t6_8M_mean/
 ```
 
-The public copy is prepared for distribution as the `model-v1.0` GitHub Release
-asset. After that release is published, obtain and integrity-check it with:
+The public copy is distributed as the `model-v1.0` GitHub Release asset. Obtain
+and integrity-check it with:
 
 ```bash
 python scripts/download_checkpoint.py

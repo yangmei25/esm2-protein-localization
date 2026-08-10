@@ -157,8 +157,8 @@ Place the original DeepLoc FASTA at the path described in
 [`data/raw/README.md`](data/raw/README.md). Large data, cached embeddings, and
 model checkpoints should remain local and should not be committed to GitHub.
 
-After the `model-v1.0` GitHub Release is published, download the fine-tuned
-checkpoint and verify its SHA-256 checksum with:
+Download the fine-tuned checkpoint from the published `model-v1.0` GitHub
+Release and verify its SHA-256 checksum with:
 
 ```bash
 python scripts/download_checkpoint.py
