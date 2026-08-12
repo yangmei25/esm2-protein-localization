@@ -5,6 +5,10 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
+# Local presentation materials; do not publish to GitHub.
+presentations/
+.codex_presentation_build/
+
 # Personal learning and exploratory notebooks.
 notebooks_for_me/
 

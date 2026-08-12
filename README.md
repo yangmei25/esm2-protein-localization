@@ -83,8 +83,8 @@ fully untouched final estimate.
 
 | Method | Representation | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---:|---:|---:|---:|---:|
-| Hydrophobicity + Logistic Regression | 35 handcrafted features | 0.815 | — | — | 0.768 | 0.871 |
-| Hydrophobicity + Random Forest | 35 handcrafted features | 0.847 | — | — | 0.792 | 0.916 |
+| Hydrophobicity + Logistic Regression | 35 handcrafted features | 0.815 | 0.788 | 0.749 | 0.768 | 0.871 |
+| Hydrophobicity + Random Forest | 35 handcrafted features | 0.847 | 0.889 | 0.714 | 0.792 | 0.916 |
 | Frozen ESM-2 + Logistic Regression | First token | 0.851 | 0.820 | 0.823 | 0.821 | 0.935 |
 | Frozen ESM-2 + Logistic Regression | Max pooling | 0.834 | 0.805 | 0.792 | 0.798 | 0.911 |
 | Frozen ESM-2 + Logistic Regression | Mean pooling | 0.892 | 0.882 | 0.853 | 0.867 | 0.948 |
