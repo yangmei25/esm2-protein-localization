@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import time
+from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -136,7 +138,8 @@ def extract_embeddings(
     model_name: str,
     batch_size: int,
     device: torch.device,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    mixed_precision: str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, int, float, float | None]:
     """Extract all representations while preserving input row order."""
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
@@ -151,6 +154,13 @@ def extract_embeddings(
     model.requires_grad_(False)
     model.to(device)
 
+    amp_enabled = mixed_precision != "none" and device.type == "cuda"
+    if mixed_precision == "bf16" and amp_enabled and not torch.cuda.is_bf16_supported():
+        raise RuntimeError("bf16 was requested but is unsupported by this GPU")
+    amp_dtype = torch.bfloat16 if mixed_precision == "bf16" else torch.float16
+    if mixed_precision == "auto" and amp_enabled and torch.cuda.is_bf16_supported():
+        amp_dtype = torch.bfloat16
+
     loader = DataLoader(
         ProteinDataset(frame),
         batch_size=batch_size,
@@ -161,13 +171,28 @@ def extract_embeddings(
     mean_batches: list[np.ndarray] = []
     max_batches: list[np.ndarray] = []
 
-    for token_batch in tqdm(loader, desc="Extracting ESM-2 embeddings"):
-        first_token, residue_mean, residue_max = extract_batch_representations(
-            model, token_batch, device
-        )
-        first_batches.append(first_token)
-        mean_batches.append(residue_mean)
-        max_batches.append(residue_max)
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+    started_at = time.perf_counter()
+    context = (
+        torch.autocast(device_type="cuda", dtype=amp_dtype)
+        if amp_enabled
+        else nullcontext()
+    )
+    with context:
+        for token_batch in tqdm(loader, desc="Extracting ESM-2 embeddings"):
+            first_token, residue_mean, residue_max = extract_batch_representations(
+                model, token_batch, device
+            )
+            first_batches.append(first_token)
+            mean_batches.append(residue_mean)
+            max_batches.append(residue_max)
+    elapsed_seconds = time.perf_counter() - started_at
+    peak_gpu_memory_gb = (
+        torch.cuda.max_memory_allocated(device) / 1024**3
+        if device.type == "cuda"
+        else None
+    )
 
     first_embeddings = np.concatenate(first_batches).astype(np.float32, copy=False)
     mean_embeddings = np.concatenate(mean_batches).astype(np.float32, copy=False)
@@ -185,7 +210,16 @@ def extract_embeddings(
         if not np.isfinite(array).all():
             raise AssertionError(f"{name} contains a non-finite value")
 
-    return first_embeddings, mean_embeddings, max_embeddings, hidden_size
+    parameter_count = sum(parameter.numel() for parameter in model.parameters())
+    return (
+        first_embeddings,
+        mean_embeddings,
+        max_embeddings,
+        hidden_size,
+        parameter_count,
+        elapsed_seconds,
+        peak_gpu_memory_gb,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -209,6 +243,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--model-name", default=DEFAULT_MODEL)
     parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument(
+        "--mixed-precision",
+        choices=["auto", "none", "fp16", "bf16"],
+        default="none",
+        help="Use CUDA mixed precision during frozen inference.",
+    )
     parser.add_argument(
         "--device",
         choices=["auto", "cpu", "cuda", "mps"],
@@ -242,11 +282,20 @@ def main() -> None:
     print(f"Device: {device}")
     print(f"Batch size: {args.batch_size}")
 
-    first_embeddings, mean_embeddings, max_embeddings, hidden_size = extract_embeddings(
+    (
+        first_embeddings,
+        mean_embeddings,
+        max_embeddings,
+        hidden_size,
+        parameter_count,
+        elapsed_seconds,
+        peak_gpu_memory_gb,
+    ) = extract_embeddings(
         frame=frame,
         model_name=args.model_name,
         batch_size=args.batch_size,
         device=device,
+        mixed_precision=args.mixed_precision,
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -267,11 +316,16 @@ def main() -> None:
         "source_csv_sha256": file_sha256(args.data),
         "number_of_proteins": len(frame),
         "hidden_size": hidden_size,
+        "parameter_count": parameter_count,
         "embedding_dtype": "float32",
         "representations": ["first_token", "mean", "max"],
         "special_tokens_in_residue_pooling": False,
         "batch_size": args.batch_size,
         "device_used": str(device),
+        "mixed_precision": args.mixed_precision,
+        "elapsed_seconds": elapsed_seconds,
+        "proteins_per_second": len(frame) / elapsed_seconds,
+        "peak_gpu_memory_gb": peak_gpu_memory_gb,
         "limit": args.limit,
     }
     args.metadata.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")

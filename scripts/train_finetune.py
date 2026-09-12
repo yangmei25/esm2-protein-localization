@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fine-tune ESM-2 8M for membrane-versus-soluble classification.
+"""Fine-tune an ESM-2 checkpoint for membrane-versus-soluble classification.
 
 The model mean-pools residue embeddings while excluding special tokens and
 padding, then applies dropout and a two-class linear head. Model selection uses
@@ -283,6 +283,70 @@ def save_checkpoint(
     )
 
 
+def save_training_state(
+    path: Path,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    scheduler,
+    scaler: torch.amp.GradScaler,
+    epoch: int,
+    best_f1: float,
+    epochs_without_improvement: int,
+    history: list[dict],
+    generator: torch.Generator,
+) -> None:
+    """Save enough state to resume after a Colab runtime interruption."""
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+            "scaler_state_dict": scaler.state_dict(),
+            "epoch": epoch,
+            "best_f1": best_f1,
+            "epochs_without_improvement": epochs_without_improvement,
+            "history": history,
+            "python_random_state": random.getstate(),
+            "numpy_random_state": np.random.get_state(),
+            "torch_random_state": torch.get_rng_state(),
+            "cuda_random_state": (
+                torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+            ),
+            "dataloader_generator_state": generator.get_state(),
+        },
+        path,
+    )
+
+
+def restore_training_state(
+    path: Path,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    scheduler,
+    scaler: torch.amp.GradScaler,
+    generator: torch.Generator,
+    device: torch.device,
+) -> tuple[int, float, int, list[dict]]:
+    """Restore a saved run and return its next epoch and selection state."""
+    checkpoint = torch.load(path, map_location=device, weights_only=False)
+    load_model_state_compatibly(model, checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    scaler.load_state_dict(checkpoint["scaler_state_dict"])
+    random.setstate(checkpoint["python_random_state"])
+    np.random.set_state(checkpoint["numpy_random_state"])
+    torch.set_rng_state(checkpoint["torch_random_state"].cpu())
+    if torch.cuda.is_available() and checkpoint["cuda_random_state"] is not None:
+        torch.cuda.set_rng_state_all(checkpoint["cuda_random_state"])
+    generator.set_state(checkpoint["dataloader_generator_state"].cpu())
+    return (
+        int(checkpoint["epoch"]) + 1,
+        float(checkpoint["best_f1"]),
+        int(checkpoint["epochs_without_improvement"]),
+        list(checkpoint["history"]),
+    )
+
+
 def train(args: argparse.Namespace) -> None:
     """Run fine-tuning, validation selection, and optional test evaluation."""
     if args.epochs < 1 or args.batch_size < 1 or args.gradient_accumulation_steps < 1:
@@ -334,7 +398,14 @@ def train(args: argparse.Namespace) -> None:
         pin_memory=device.type == "cuda",
     )
 
-    model = ESM2MeanPoolingClassifier(args.model_name, args.dropout).to(device)
+    model = ESM2MeanPoolingClassifier(args.model_name, args.dropout)
+    if args.gradient_checkpointing:
+        if not hasattr(model.encoder, "gradient_checkpointing_enable"):
+            raise RuntimeError("This encoder does not support gradient checkpointing")
+        model.encoder.gradient_checkpointing_enable()
+        if hasattr(model.encoder.config, "use_cache"):
+            model.encoder.config.use_cache = False
+    model = model.to(device)
     print(f"Model ready on {device}; starting training setup", flush=True)
     label_counts = np.bincount(train_frame["label"].to_numpy(), minlength=2)
     class_weights = len(train_frame) / (2.0 * label_counts)
@@ -412,8 +483,27 @@ def train(args: argparse.Namespace) -> None:
     history: list[dict] = []
     best_f1 = -1.0
     epochs_without_improvement = 0
+    start_epoch = 1
+    training_state_path = args.output_dir / "last_training_state.pt"
+    if args.resume:
+        if not training_state_path.exists():
+            raise FileNotFoundError(
+                f"Cannot resume because training state is missing: {training_state_path}"
+            )
+        start_epoch, best_f1, epochs_without_improvement, history = (
+            restore_training_state(
+                training_state_path,
+                model,
+                optimizer,
+                scheduler,
+                scaler,
+                generator,
+                device,
+            )
+        )
+        print(f"Resuming at epoch {start_epoch}; best validation F1={best_f1:.4f}")
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         optimizer.zero_grad(set_to_none=True)
         running_loss = 0.0
@@ -475,9 +565,23 @@ def train(args: argparse.Namespace) -> None:
             print(f"Saved new best checkpoint (validation F1={best_f1:.4f})")
         else:
             epochs_without_improvement += 1
-            if epochs_without_improvement >= args.early_stopping_patience:
-                print("Early stopping triggered")
-                break
+
+        save_training_state(
+            training_state_path,
+            model,
+            optimizer,
+            scheduler,
+            scaler,
+            epoch,
+            best_f1,
+            epochs_without_improvement,
+            history,
+            generator,
+        )
+        print(f"Saved resumable training state after epoch {epoch}")
+        if epochs_without_improvement >= args.early_stopping_patience:
+            print("Early stopping triggered")
+            break
 
     checkpoint = torch.load(best_checkpoint, map_location=device, weights_only=False)
     load_model_state_compatibly(model, checkpoint["model_state_dict"])
@@ -502,7 +606,7 @@ def train(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Fine-tune ESM-2 8M with residue mean pooling."
+        description="Fine-tune an ESM-2 checkpoint with residue mean pooling."
     )
     parser.add_argument(
         "--data", type=Path, default=Path("data/processed/deeploc_binary.csv")
@@ -532,6 +636,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--mixed-precision",
         choices=["auto", "none", "fp16", "bf16"],
         default="auto",
+    )
+    parser.add_argument(
+        "--gradient-checkpointing",
+        action="store_true",
+        help="Trade additional compute for lower activation memory during training.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from output-dir/last_training_state.pt.",
     )
     parser.add_argument(
         "--evaluate-test",

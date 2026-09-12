@@ -1,0 +1,71 @@
+experiment_name: esm2_v2_model_scaling
+dataset: data/processed/deeploc_binary.csv
+dataset_policy:
+  preserve_existing_splits: true
+  use_test_for_selection: false
+  positive_label: membrane
+  negative_label: soluble
+  max_residues: 1022
+
+models:
+  - short_name: esm2_8m
+    huggingface_name: facebook/esm2_t6_8M_UR50D
+    parameters_millions: 8
+    frozen_batch_size: 8
+    finetune_batch_size: 4
+    gradient_accumulation_steps: 4
+  - short_name: esm2_35m
+    huggingface_name: facebook/esm2_t12_35M_UR50D
+    parameters_millions: 35
+    frozen_batch_size: 4
+    finetune_batch_size: 2
+    gradient_accumulation_steps: 8
+  - short_name: esm2_150m
+    huggingface_name: facebook/esm2_t30_150M_UR50D
+    parameters_millions: 150
+    frozen_batch_size: 2
+    finetune_batch_size: 1
+    gradient_accumulation_steps: 16
+
+frozen_experiment:
+  representations:
+    - first_token
+    - mean
+    - max
+  classifier: logistic_regression
+  classifier_c: 1.0
+  random_seed: 42
+
+finetuning:
+  pooling: residue_mean
+  initial_seeds:
+    - 42
+  confirmation_seeds:
+    - 17
+    - 42
+    - 73
+  epochs: 5
+  learning_rate: 0.00002
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  dropout: 0.1
+  effective_batch_size: 16
+  mixed_precision: auto
+  gradient_checkpointing_for:
+    - esm2_150m
+
+selection:
+  split: validation
+  primary_metric: f1
+  secondary_metrics:
+    - recall
+    - roc_auc
+  maximum_f1_gap_from_best: 0.005
+  prefer_smallest_eligible_model: true
+
+outputs:
+  frozen_embeddings: results/embeddings/v2_model_scaling
+  frozen_models: results/models/v2_model_scaling
+  frozen_metrics: results/metrics/v2_model_scaling/frozen
+  finetuning: results/finetune/v2_model_scaling
+

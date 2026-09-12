@@ -33,3 +33,5 @@ results/homology_audit/cross_split_blast_hits.csv
 results/finetune/**/best_validation_predictions.csv
 results/finetune/**/test_predictions.csv
 results/metrics/classical_baselines/predictions.csv
+results/metrics/v2_model_scaling/**/validation_predictions.csv
+results/metrics/v2_model_scaling/**/test_predictions.csv
