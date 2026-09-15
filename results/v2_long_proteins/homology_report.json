@@ -1,0 +1,14 @@
+{
+  "method": "BLASTP homology exclusion against V1 training proteins",
+  "blast_version": "blastp: 2.15.0+",
+  "external_candidates": 610,
+  "v1_training_proteins": 5055,
+  "identity_threshold_percent": 30.0,
+  "shorter_sequence_coverage_threshold": 0.8,
+  "homologous_external_proteins_excluded": 46,
+  "external_proteins_retained": 564,
+  "retained_class_counts": {
+    "soluble": 299,
+    "membrane": 265
+  }
+}

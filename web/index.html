@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESM-2 Protein Localization</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <span class="eyebrow">ESM-2 150M · V2</span>
+      <h1>Protein localization predictor</h1>
+      <p>Estimate whether one amino-acid sequence is membrane-associated or soluble.</p>
+    </header>
+
+    <section class="card input-card">
+      <label for="protein-id">Protein identifier</label>
+      <input id="protein-id" value="query_protein" maxlength="200">
+      <div class="label-row">
+        <label for="sequence">Amino-acid sequence</label>
+        <span id="sequence-length">0 residues</span>
+      </div>
+      <textarea id="sequence" rows="9" spellcheck="false" placeholder="Paste a protein sequence here…"></textarea>
+      <div class="actions">
+        <button id="example" class="secondary">Load example</button>
+        <button id="predict">Predict localization</button>
+      </div>
+      <p id="error" class="error" role="alert"></p>
+    </section>
+
+    <section id="result" class="card result-card hidden" aria-live="polite">
+      <div class="result-heading">
+        <div>
+          <span class="eyebrow">Prediction</span>
+          <h2 id="predicted-label"></h2>
+        </div>
+        <span id="confidence" class="confidence"></span>
+      </div>
+      <div class="probability-row"><span>Membrane-associated</span><strong id="membrane-value"></strong></div>
+      <div class="track"><div id="membrane-bar" class="bar membrane"></div></div>
+      <div class="probability-row"><span>Soluble</span><strong id="soluble-value"></strong></div>
+      <div class="track"><div id="soluble-bar" class="bar soluble"></div></div>
+      <dl class="metadata">
+        <div><dt>Model</dt><dd id="model-name"></dd></div>
+        <div><dt>Checkpoint epoch</dt><dd id="checkpoint-epoch"></dd></div>
+        <div><dt>Compute device</dt><dd id="device"></dd></div>
+        <div><dt>Sequence length</dt><dd id="result-length"></dd></div>
+        <div><dt>Decision threshold</dt><dd id="threshold"></dd></div>
+        <div><dt>Windows evaluated</dt><dd id="windows"></dd></div>
+        <div><dt>Highest-scoring region</dt><dd id="top-window"></dd></div>
+      </dl>
+      <p class="disclaimer">Research prediction only. This does not replace experimental localization evidence.</p>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "model": "facebook/esm2_t30_150M_UR50D",
+  "training_seed": 42,
+  "selected_epoch": 3,
+  "selection_metric": "validation_macro_f1",
+  "internal_validation": {
+    "exact_match_accuracy": 0.815254,
+    "micro_f1": 0.889029,
+    "macro_f1": 0.765433,
+    "labels": {
+      "soluble": {"precision": 0.933793, "recall": 0.942372, "f1": 0.938063, "roc_auc": 0.937347},
+      "transmembrane": {"precision": 0.970075, "recall": 0.950305, "f1": 0.960088, "roc_auc": 0.983898},
+      "peripheral": {"precision": 0.338521, "recall": 0.424390, "f1": 0.376623, "roc_auc": 0.826556},
+      "lipidanchor": {"precision": 0.762082, "recall": 0.813492, "f1": 0.786948, "roc_auc": 0.951557}
+    }
+  },
+  "legacy_binary_validation": {
+    "proteins": 1264,
+    "accuracy": 0.9367088608,
+    "precision": 0.9174484053,
+    "recall": 0.9314285714,
+    "f1": 0.9243856333,
+    "roc_auc": 0.9780939494,
+    "tn": 695,
+    "fp": 44,
+    "fn": 36,
+    "tp": 489
+  },
+  "posthoc_external_cohort": {
+    "proteins": 2284,
+    "exact_match_accuracy": 0.7933450088,
+    "micro_f1": 0.8849765258,
+    "macro_f1": 0.7630528885,
+    "labels": {
+      "soluble": {"precision": 0.9511599512, "recall": 0.9175500589, "f1": 0.9340527578, "roc_auc": 0.9315220275},
+      "transmembrane": {"precision": 0.9576427256, "recall": 0.9335727110, "f1": 0.9454545455, "roc_auc": 0.9797887392},
+      "peripheral": {"precision": 0.4860139860, "recall": 0.5494071146, "f1": 0.5157699443, "roc_auc": 0.8355343947},
+      "lipidanchor": {"precision": 0.6250000000, "recall": 0.6923076923, "f1": 0.6569343066, "roc_auc": 0.8766353520}
+    },
+    "previous_binary_model_peripheral_recall": 0.3254,
+    "peripheral_recall_change": 0.2240071146
+  }
+}

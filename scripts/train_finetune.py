@@ -29,7 +29,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer, get_linear_schedule_with_warmup
 
@@ -161,15 +161,29 @@ def load_model_state_compatibly(
     """
     incompatible = model.load_state_dict(state_dict, strict=False)
     allowed_missing = set()
+    allowed_unexpected = set()
     if getattr(model.encoder.config, "position_embedding_type", None) == "rotary":
         allowed_missing.add("encoder.embeddings.position_embeddings.weight")
 
+        # Transformers releases have represented the deterministic rotary
+        # frequency buffer in two equivalent ways: once on the ESM encoder, or
+        # once per attention layer. These tensors are derived from the model
+        # configuration and are not learned fine-tuning weights.
+        allowed_missing.update(
+            key
+            for key in incompatible.missing_keys
+            if key.startswith("encoder.encoder.layer.")
+            and key.endswith(".attention.self.rotary_embeddings.inv_freq")
+        )
+        allowed_unexpected.add("encoder.rotary_embeddings.inv_freq")
+
     unexpected_missing = set(incompatible.missing_keys) - allowed_missing
-    if unexpected_missing or incompatible.unexpected_keys:
+    unexpected_keys = set(incompatible.unexpected_keys) - allowed_unexpected
+    if unexpected_missing or unexpected_keys:
         raise RuntimeError(
             "Checkpoint is incompatible with the current model: "
             f"missing={sorted(unexpected_missing)}, "
-            f"unexpected={sorted(incompatible.unexpected_keys)}"
+            f"unexpected={sorted(unexpected_keys)}"
         )
 
 
@@ -372,10 +386,29 @@ def train(args: argparse.Namespace) -> None:
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     collate_fn = make_collate_fn(tokenizer)
     generator = torch.Generator().manual_seed(args.seed)
+    train_sampler = None
+    if args.weighted_sampling:
+        if "sample_weight" not in train_frame.columns:
+            raise ValueError("--weighted-sampling requires a sample_weight column")
+        sample_weights = pd.to_numeric(train_frame["sample_weight"], errors="coerce")
+        if sample_weights.isna().any() or not sample_weights.gt(0).all():
+            raise ValueError("sample_weight values must be finite positive numbers")
+        train_sampler = WeightedRandomSampler(
+            weights=torch.as_tensor(sample_weights.to_numpy(), dtype=torch.double),
+            num_samples=len(train_frame),
+            replacement=True,
+            generator=generator,
+        )
+        print(
+            "Weighted sampling enabled — sample_weight range: "
+            f"{sample_weights.min():.2f}–{sample_weights.max():.2f}",
+            flush=True,
+        )
     train_loader = DataLoader(
         ProteinDataset(train_frame),
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=train_sampler is None,
+        sampler=train_sampler,
         collate_fn=collate_fn,
         generator=generator,
         num_workers=args.num_workers,
@@ -629,6 +662,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--early-stopping-patience", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument(
+        "--weighted-sampling",
+        action="store_true",
+        help="Sample training rows using the positive sample_weight CSV column.",
+    )
     parser.add_argument(
         "--device", choices=["auto", "cpu", "cuda", "mps"], default="auto"
     )

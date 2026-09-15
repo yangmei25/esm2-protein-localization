@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+*.ipynb
+notebooks_for_me
+data
+results
+presentations
+.pytest_cache
+.DS_Store

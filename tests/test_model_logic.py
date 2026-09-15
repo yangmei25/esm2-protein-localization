@@ -10,6 +10,7 @@ from scripts.train_embedding_classifiers import classification_metrics as frozen
 from scripts.train_finetune import (
     ESM2MeanPoolingClassifier,
     classification_metrics as finetuned_metrics,
+    load_model_state_compatibly,
 )
 
 
@@ -83,6 +84,25 @@ class ModelLogicTests(unittest.TestCase):
             {key: finetuned[key] for key in ("tn", "fp", "fn", "tp")},
             {"tn": 1, "fp": 1, "fn": 1, "tp": 1},
         )
+
+    def test_checkpoint_loader_accepts_rotary_buffer_layout_change(self) -> None:
+        class CompatibleModel:
+            encoder = SimpleNamespace(
+                config=SimpleNamespace(position_embedding_type="rotary")
+            )
+
+            def load_state_dict(self, _state_dict, strict=False):
+                self.strict = strict
+                return SimpleNamespace(
+                    missing_keys=[
+                        "encoder.encoder.layer.0.attention.self.rotary_embeddings.inv_freq"
+                    ],
+                    unexpected_keys=["encoder.rotary_embeddings.inv_freq"],
+                )
+
+        model = CompatibleModel()
+        load_model_state_compatibly(model, {})
+        self.assertFalse(model.strict)
 
 
 if __name__ == "__main__":

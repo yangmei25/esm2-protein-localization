@@ -28,6 +28,8 @@ results/finetune/**/*.pt
 
 # Query-level BLAST alignments are reproducible generated data; track summary only.
 results/homology_audit/cross_split_blast_hits.csv
+results/v2_external_validation/homology_hits.csv
+results/v2_long_proteins/homology_hits.csv
 
 # Per-protein outputs retain source identifiers/labels; publish aggregates only.
 results/finetune/**/best_validation_predictions.csv
@@ -35,3 +37,6 @@ results/finetune/**/test_predictions.csv
 results/metrics/classical_baselines/predictions.csv
 results/metrics/v2_model_scaling/**/validation_predictions.csv
 results/metrics/v2_model_scaling/**/test_predictions.csv
+results/v2_external_validation/**/external_predictions.csv
+results/v2_long_proteins/**/protein_predictions_overlap_*.csv
+results/v2_long_proteins/**/window_predictions_overlap_*.csv

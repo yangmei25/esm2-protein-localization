@@ -1,15 +1,9 @@
 # Notebooks
 
-These polished notebooks are intended for mentor and public review. Command-line
-scripts remain the authoritative implementation.
+V2 does not publish executable notebooks. Its authoritative workflows are the
+Python entry points in `scripts/` and reusable code in `src/esm2_localization/`.
 
-1. `01_project_walkthrough.ipynb` summarizes the problem, data, methods,
-   baseline results, frozen ESM-2 results, limitations, and next experiment.
-2. `02_colab_finetuning.ipynb` clones the GitHub repository, uploads the
-   Git-ignored processed CSV, calls `scripts/train_finetune.py`, plots validation
-   history, and downloads the selected checkpoint and result files.
-3. `03_v2_model_scaling.ipynb` compares frozen and fine-tuned ESM-2 8M, 35M,
-   and 150M while saving large artifacts persistently in Google Drive.
-
-Detailed learning and exploratory notebooks are kept locally in the ignored
-`notebooks_for_me/` directory.
+The original walkthrough and Colab notebook remain preserved in the
+[`v1.0.0` notebooks directory](https://github.com/yangmei25/esm2-protein-localization/tree/v1.0.0/notebooks).
+Local exploratory and V2 review notebooks are kept in the Git-ignored
+`notebooks_for_me/` directory and are not part of the V2 release.

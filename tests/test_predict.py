@@ -3,7 +3,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from scripts.predict import normalize_sequence, read_single_fasta, resolve_input
+from scripts.predict import (
+    aggregate_window_probabilities,
+    make_sequence_windows,
+    normalize_sequence,
+    read_single_fasta,
+    resolve_input,
+)
 
 
 class PredictInputTests(unittest.TestCase):
@@ -18,9 +24,25 @@ class PredictInputTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid amino-acid symbols"):
             normalize_sequence("ACD*")
 
-    def test_normalize_sequence_rejects_sequences_over_model_limit(self) -> None:
-        with self.assertRaisesRegex(ValueError, "at most 1022"):
-            normalize_sequence("A" * 1023)
+    def test_normalize_sequence_accepts_sequences_over_single_window_limit(self) -> None:
+        self.assertEqual(len(normalize_sequence("A" * 2000)), 2000)
+
+    def test_short_sequence_creates_one_window(self) -> None:
+        self.assertEqual(
+            make_sequence_windows("ACDE", window_size=10, stride=5),
+            [{"start": 1, "end": 4, "sequence": "ACDE"}],
+        )
+
+    def test_long_sequence_windows_cover_both_ends(self) -> None:
+        windows = make_sequence_windows("A" * 2000, window_size=1022, stride=511)
+        self.assertEqual([(w["start"], w["end"]) for w in windows], [(1, 1022), (512, 1533), (979, 2000)])
+
+    def test_window_configuration_is_validated(self) -> None:
+        with self.assertRaisesRegex(ValueError, "stride"):
+            make_sequence_windows("ACDE", window_size=10, stride=11)
+
+    def test_window_probabilities_use_maximum_aggregation(self) -> None:
+        self.assertEqual(aggregate_window_probabilities([0.2, 0.8, 0.4]), 0.8)
 
     def test_read_single_fasta(self) -> None:
         with TemporaryDirectory() as temporary_directory:

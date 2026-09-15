@@ -1,0 +1,66 @@
+{
+  "model_scaling": {
+    "validation_n": 1264,
+    "encoder_parameters": {"8M": 7842521, "35M": 33269521, "150M": 147728601},
+    "hidden_size": {"8M": 320, "35M": 480, "150M": 640},
+    "frozen_mean_pooling": {
+      "8M": {"precision": 0.881890, "recall": 0.853333, "f1": 0.867377, "roc_auc": 0.947847},
+      "35M": {"precision": 0.874016, "recall": 0.845714, "f1": 0.859632, "roc_auc": 0.951974},
+      "150M": {"precision": 0.892925, "recall": 0.889524, "f1": 0.891221, "roc_auc": 0.962294}
+    },
+    "finetuned_three_seed_mean": {
+      "8M": {"accuracy": 0.9225, "accuracy_sd": 0.0008, "precision": 0.9528, "precision_sd": 0.0109, "recall": 0.8559, "recall_sd": 0.0112, "f1": 0.9017, "f1_sd": 0.0016, "roc_auc": 0.9665, "roc_auc_sd": 0.0020},
+      "35M": {"accuracy": 0.9314, "accuracy_sd": 0.0009, "precision": 0.9552, "precision_sd": 0.0117, "recall": 0.8762, "recall_sd": 0.0114, "f1": 0.9139, "f1_sd": 0.0015, "roc_auc": 0.9736, "roc_auc_sd": 0.0018},
+      "150M": {"accuracy": 0.9480, "accuracy_sd": 0.0032, "precision": 0.9539, "precision_sd": 0.0031, "recall": 0.9194, "recall_sd": 0.0048, "f1": 0.9363, "f1_sd": 0.0040, "roc_auc": 0.9819, "roc_auc_sd": 0.0016}
+    },
+    "selected_model": "150M"
+  },
+  "selected_150m_test": {
+    "proteins": 1571,
+    "seeds": [17, 42, 73],
+    "accuracy": "0.9327 ± 0.0020",
+    "precision": "0.9067 ± 0.0059",
+    "recall": "0.9379 ± 0.0023",
+    "f1": "0.9220 ± 0.0020",
+    "roc_auc": "0.9771 ± 0.0016",
+    "status": "exploratory because the test split had previously been inspected"
+  },
+  "external_binary": {
+    "three_seed_mean": {"accuracy": 0.8672, "precision": 0.8805, "recall": 0.7527, "f1": 0.8116, "roc_auc": 0.9021},
+    "subtype_recall": {"transmembrane": 0.9521, "peripheral": 0.3254, "lipidanchor": 0.7333},
+    "subtype_counts": {"transmembrane": 557, "peripheral": 253, "lipidanchor": 65},
+    "mean_false_negatives": {"transmembrane": 26.6667, "peripheral": 170.6667, "lipidanchor": 17.3333},
+    "interpretation": "The overall decline was concentrated in Peripheral proteins rather than Transmembrane proteins."
+  },
+  "subtype_aware_seed42": {
+    "internal_macro_f1": 0.7654,
+    "internal_micro_f1": 0.8890,
+    "legacy_binary": {"accuracy": 0.9367, "precision": 0.9174, "recall": 0.9314, "f1": 0.9244, "roc_auc": 0.9781},
+    "external": {
+      "macro_f1": 0.7631,
+      "micro_f1": 0.8850,
+      "subtype_recall": {"transmembrane": 0.9336, "peripheral": 0.5494, "lipidanchor": 0.6923}
+    },
+    "peripheral_recall_gain": 0.2240,
+    "status": "single-seed post-hoc pilot"
+  },
+  "long_proteins": {
+    "proteins": 564,
+    "length_rule": "greater than 1,022 aa",
+    "window_size": 1022,
+    "selected_overlap": 128,
+    "overlap_selection_seed42": {
+      "128": {"accuracy": 0.868794, "precision": 0.906383, "recall": 0.803774, "f1": 0.852000, "roc_auc": 0.910721, "false_positive_rate": 0.073579},
+      "256": {"accuracy": 0.865248, "precision": 0.898734, "recall": 0.803774, "f1": 0.848606, "roc_auc": 0.909756, "false_positive_rate": 0.080268},
+      "511": {"accuracy": 0.863475, "precision": 0.894958, "recall": 0.803774, "f1": 0.846918, "roc_auc": 0.909832, "false_positive_rate": 0.083612}
+    },
+    "seeds": [17, 42, 73],
+    "accuracy": "0.8522 ± 0.0228",
+    "precision": "0.8508 ± 0.0613",
+    "recall": "0.8377 ± 0.0322",
+    "f1": "0.8425 ± 0.0157",
+    "roc_auc": "0.9202 ± 0.0095",
+    "false_positive_rate": "0.1349 ± 0.0697",
+    "status": "experimental window-based inference, not residue-level segment prediction"
+  }
+}

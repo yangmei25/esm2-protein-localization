@@ -2,29 +2,28 @@
 
 This project predicts whether a protein is **membrane-associated** or
 **soluble** from its amino-acid sequence. It compares an interpretable
-hydrophobicity baseline with two uses of the small
-[`facebook/esm2_t6_8M_UR50D`](https://huggingface.co/facebook/esm2_t6_8M_UR50D)
-protein language model:
+hydrophobicity baseline with frozen and fine-tuned ESM-2 protein language
+models at 8M, 35M, and 150M parameters:
 
 1. frozen ESM-2 embeddings followed by Logistic Regression; and
 2. end-to-end fine-tuning of ESM-2 with a binary classification head.
 
-The 8M-parameter model was chosen deliberately: it is practical on a single
-consumer GPU or Google Colab while still providing learned protein-sequence
-representations.
+The original workflow used the practical 8M model. V2 then measured whether
+scaling to 35M and 150M produced a consistent performance gain.
 
 ## Project status
 
 The data pipeline, three frozen-embedding experiments, biological baselines,
-and validation-stage fine-tuning are complete. The best current validation
-result is the fine-tuned ESM-2 model with **0.900 F1** and **0.969 ROC-AUC**.
+fine-tuning, model-size scaling, and three-seed confirmation are complete.
+Fine-tuned ESM-2 150M was selected by validation F1 and achieved mean test
+performance of **0.9220 F1** and **0.9771 ROC-AUC** across three seeds.
 
-Single-sequence inference, a 24-test offline suite, reproducible classical
-baselines, and a pinned Python environment are complete. Remaining work includes
-documenting dataset provenance more completely, adding an end-to-end checkpoint
-integration test, and evaluating with a homology-aware split. Fine-tuned test
-evaluation is reported as exploratory because the test split had already been
-inspected earlier in the project.
+Single-sequence inference, a 40-test offline and HTTP-contract suite, reproducible
+classical baselines, a pinned Python environment, a locally validated FastAPI
+demo, and deployment-ready container configuration are complete. No public cloud
+endpoint is maintained; AWS configuration is included as an optional reference
+for a future role-specific deployment. Fine-tuned test evaluation is reported as
+exploratory because the test split had already been inspected earlier.
 
 ## Pipeline
 
@@ -106,7 +105,159 @@ classical-baseline table above, which includes longer proteins.
 
 ![Validation ROC comparison of the classical Random Forest, frozen mean ESM-2, and fine-tuned ESM-2](results/figures/validation_roc_model_comparison.png)
 
-### Exploratory fine-tuned test result
+### V2 model scaling across three seeds
+
+The first V2 result compared frozen mean-pooled representations and end-to-end
+fine-tuning across ESM-2 8M, 35M, and 150M. Architecture selection used
+validation F1. Frozen rows use mean-pooled embeddings with Logistic Regression;
+fine-tuned rows report the mean across seeds 17, 42, and 73.
+
+| ESM-2 size | Training method | Precision | Recall | F1 | ROC-AUC |
+|---|---|---:|---:|---:|---:|
+| 8M | Frozen | 0.8819 | 0.8533 | 0.8674 | 0.9478 |
+| 8M | Fine-tuned | 0.9528 | 0.8559 | 0.9017 | 0.9665 |
+| 35M | Frozen | 0.8740 | 0.8457 | 0.8596 | 0.9520 |
+| 35M | Fine-tuned | 0.9552 | 0.8762 | 0.9139 | 0.9736 |
+| 150M | Frozen | 0.8929 | 0.8895 | 0.8912 | 0.9623 |
+| **150M** | **Fine-tuned** | **0.9539** | **0.9194** | **0.9363** | **0.9819** |
+
+Fine-tuning improved F1 over the frozen representation at every tested size,
+and the fine-tuned result improved from 8M to 35M to 150M. Fine-tuned ESM-2
+150M therefore delivered the best validation performance and was selected as
+the V2 architecture. The tested range does not yet demonstrate a performance
+plateau.
+
+![V2 Result 2: fine-tuned validation performance across three seeds](results/figures/v2_result_2_multiseed_scaling.png)
+
+### V2 external generalization and subtype diagnosis
+
+The selected binary 150M model was next evaluated across the same three seeds
+on a homology-filtered DeepLoc 2.1 external cohort. Performance was lower than
+on the original validation set.
+
+| Cohort | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Original validation | 0.9480 | 0.9539 | 0.9194 | 0.9363 | 0.9819 |
+| Homology-filtered external | 0.8672 | 0.8805 | 0.7527 | 0.8116 | 0.9021 |
+
+The recall difference should not be interpreted as a simple failure to
+reproduce the original result. The original random validation split contains
+many proteins with detectable training-set homologs, whereas the external
+workflow removed exact overlaps and training homologs and also represents a
+different DeepLoc release. These changes create a harder distribution shift.
+Subtype diagnostics locate most of the missed positives more specifically:
+Transmembrane recall remained **0.9521**, but Peripheral recall was only
+**0.3254**, corresponding to an average of about 171 missed Peripheral proteins
+out of 253 across the three seeds. LipidAnchor recall was **0.7333**. Thus, the
+large overall recall decline is consistent with both stricter homology control
+and a subtype-composition problem—especially poor recognition of Peripheral
+proteins—rather than a uniform loss across all membrane proteins. This analysis
+motivated the subtype-aware extension below, although it cannot by itself assign
+all of the difference to one cause.
+
+### V2 subtype-aware multi-label extension
+
+The selected 150M architecture was extended from one binary output to four
+independent sigmoid outputs: **Soluble**, **Transmembrane**, **Peripheral**, and
+**LipidAnchor**. This allows a protein to carry more than one localization label.
+The current experiment is a single pilot run with seed 42, not yet a three-seed
+confirmation. Epoch 3 was selected using internal validation macro-F1.
+
+| Internal validation label | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|
+| Soluble | 0.9338 | 0.9424 | 0.9381 | 0.9373 |
+| Transmembrane | 0.9701 | 0.9503 | 0.9601 | 0.9839 |
+| Peripheral | 0.3385 | 0.4244 | 0.3766 | 0.8266 |
+| LipidAnchor | 0.7621 | 0.8135 | 0.7869 | 0.9516 |
+
+Internal exact-match accuracy was **0.8153**, micro-F1 was **0.8890**, and
+macro-F1 was **0.7654**. Exact-match accuracy is deliberately strict: every
+label assigned to a protein must be correct.
+
+To check whether subtype training damaged the original task, the new checkpoint
+was converted back to a binary membrane-versus-soluble prediction and evaluated
+on the original 1,264-protein validation set.
+
+| Binary validation model | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Previous binary 150M, seed 42 | 0.9446 | 0.9505 | 0.9143 | 0.9320 | 0.9808 |
+| Previous binary 150M, 3-seed mean | 0.9480 | 0.9539 | 0.9194 | 0.9363 | 0.9819 |
+| New multi-label 150M, seed 42 | 0.9367 | 0.9174 | 0.9314 | 0.9244 | 0.9781 |
+
+Relative to the previous three-seed binary mean, the new model has lower
+accuracy and F1 by about **1.13** and **1.19 percentage points**, respectively,
+but higher recall by about **1.20 points**. The trade-off is primarily lower
+precision rather than a loss of ranking ability; ROC-AUC remains 0.9781.
+
+The same checkpoint was then evaluated on the existing 2,284-protein,
+homology-filtered external cohort. Because this cohort motivated the subtype
+extension, this is a **post-hoc diagnostic**, not an untouched final test.
+
+| External label | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|
+| Soluble | 0.9512 | 0.9176 | 0.9341 | 0.9315 |
+| Transmembrane | 0.9576 | 0.9336 | 0.9455 | 0.9798 |
+| Peripheral | 0.4860 | 0.5494 | 0.5158 | 0.8355 |
+| LipidAnchor | 0.6250 | 0.6923 | 0.6569 | 0.8766 |
+
+External exact-match accuracy was **0.7933**, micro-F1 was **0.8850**, and
+macro-F1 was **0.7631**. Most importantly, Peripheral recall increased from
+**0.3254 to 0.5494**—an absolute gain of **0.2240**—while Transmembrane
+performance remained strong. Peripheral localization is still the main weak
+class, so the result supports further data and multi-seed work rather than
+claiming the problem is solved.
+
+The gain should therefore be interpreted as evidence of learnable Peripheral
+signal, not as a satisfactory endpoint. Peripheral proteins make up only about
+**11.1%** of this external cohort, while the subtype-aware model achieved
+precision **0.4860** and ROC-AUC **0.8355**, so its predictions are meaningfully
+better than blind or prevalence-level guessing. Nevertheless, recall **0.5494**
+still misses about 45% of Peripheral proteins and F1 is only **0.5158**. The
+current model remains too weak for reliable Peripheral identification; this is
+a promising but partial result that motivates deeper data and modeling work.
+
+![V2 subtype-aware ESM-2 150M performance summary](results/figures/v2_subtype_aware_summary.svg)
+
+The machine-readable values used here are stored in
+[`results/metrics/v2_subtype_aware_summary.json`](results/metrics/v2_subtype_aware_summary.json).
+
+### V2 ESM-2 150M test evaluation
+
+After architecture selection, all three existing 150M seed checkpoints were
+evaluated. Values are mean ± sample standard deviation.
+
+| Test N | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---:|---:|---:|---:|---:|---:|
+| 1,571 | 0.9327 ± 0.0020 | 0.9067 ± 0.0059 | 0.9379 ± 0.0023 | 0.9220 ± 0.0020 | 0.9771 ± 0.0016 |
+
+The small standard deviations show that the result is stable across the three
+training seeds. Relative to validation, test accuracy decreased by about 1.53
+percentage points and F1 by about 1.43 points, while recall increased. This is
+a modest generalization gap rather than evidence of severe overfitting.
+
+Because the same official test split had already been inspected during V1,
+this remains an exploratory test estimate rather than a completely untouched
+final benchmark. A genuinely external or homology-controlled test set is still
+needed for a strong generalization claim.
+
+### Long-protein window validation
+
+Long-protein inference was evaluated on 564 DeepLoc 2.1 proteins longer than
+1,022 residues after removing exact V1 overlaps and V1 training homologs at
+≥30% identity with ≥80% shorter-sequence coverage. Overlaps of 128, 256, and
+511 residues were compared using seed 42; 128 achieved the highest F1 and was
+then confirmed with seeds 17 and 73.
+
+| Cohort N | Window | Overlap | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 564 | 1,022 | **128** | 0.8522 ± 0.0228 | 0.8508 ± 0.0613 | 0.8377 ± 0.0322 | 0.8425 ± 0.0157 | 0.9202 ± 0.0095 |
+
+The long-protein result is meaningfully weaker and more seed-sensitive than
+the native-length results. In particular, false-positive rate was 0.1349 ±
+0.0697, so maximum-window aggregation remains experimental rather than
+equivalent to the model's native single-window inference.
+
+### V1 exploratory fine-tuned test result
 
 | Test N | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---:|---:|---:|---:|---:|---:|
@@ -120,27 +271,30 @@ close to validation performance, but it is not a fully untouched final estimate.
 
 ```text
 .
+├── api/                        FastAPI service and typed HTTP contract
 ├── configs/                    Experiment configuration
 ├── data/                       Local raw and processed data (Git-ignored)
-├── notebooks/
-│   ├── 01_project_walkthrough.ipynb
-│   └── 02_colab_finetuning.ipynb
+├── deployment/aws/             ECS Fargate task-definition template
+├── docs/                       Scientific and deployment documentation
 ├── scripts/
 │   ├── prepare_data.py
 │   ├── extract_embeddings.py
 │   ├── train_embedding_classifiers.py
 │   ├── train_finetune.py
 │   ├── train_classical_baselines.py
+│   ├── build_v2_report.py
 │   └── predict.py
-├── src/esm2_localization/      Reusable package code
+├── src/esm2_localization/      Reusable model and V2 reporting code
 ├── results/                    Metrics, figures, and local model artifacts
-└── tests/                      Offline automated test suite
+├── tests/                      Offline and API automated test suite
+└── web/                        Interactive single-sequence demo
 ```
 
-The public notebooks provide a high-level walkthrough and a Colab fine-tuning
-workflow. Detailed learning notebooks are kept locally in the Git-ignored
-`notebooks_for_me/` directory. Command-line scripts are the authoritative
-implementation.
+V2 is a Python-first workflow and does not depend on notebooks. The V1
+walkthrough and Colab notebook remain preserved under the GitHub
+[`v1.0.0` tag](https://github.com/yangmei25/esm2-protein-localization/tree/v1.0.0/notebooks).
+Local exploratory notebooks are kept in the Git-ignored `notebooks_for_me/`
+directory and are not included in the V2 release.
 
 ## Setup
 
@@ -192,37 +346,81 @@ This trains both classifiers, writes public metrics and predictions under
 Git-ignored `results/models/classical_baselines/`, and regenerates the validation
 ROC figure used in this README.
 
-## Fine-tune in Google Colab
+## Fine-tune from Python
 
-Open [`notebooks/02_colab_finetuning.ipynb`](notebooks/02_colab_finetuning.ipynb)
-in Colab and run it from top to bottom. The notebook:
-
-- clones this repository from GitHub;
-- installs the required packages;
-- reads the Git-ignored processed CSV supplied by the user;
-- trains ESM-2 8M on a GPU; and
-- stores checkpoints and metrics in Google Drive so they survive a Colab
-  runtime reset.
-
-The equivalent command-line entry point is:
+Run the selected ESM-2 150M architecture from a GPU-enabled Python environment.
+Use separate output directories for each seed; on Colab these may point into
+Google Drive so checkpoints survive runtime disconnection.
 
 ```bash
 python scripts/train_finetune.py \
   --data data/processed/deeploc_binary.csv \
-  --output-dir results/finetune/esm2_t6_8M_mean \
-  --device auto
+  --output-dir results/v2_model_scaling/finetuned/esm2_150m_seed42 \
+  --model-name facebook/esm2_t30_150M_UR50D \
+  --seed 42 \
+  --batch-size 4 \
+  --eval-batch-size 8 \
+  --gradient-accumulation-steps 4 \
+  --gradient-checkpointing \
+  --device cuda \
+  --mixed-precision auto
 ```
 
-Test evaluation requires an explicit choice. After training, an exploratory
-test-only run can be made with:
+Repeat with seeds 17 and 73 for the three-seed confirmation. Test evaluation
+requires an explicit choice and must not be used for further model selection:
 
 ```bash
 python scripts/train_finetune.py \
   --data data/processed/deeploc_binary.csv \
-  --output-dir results/finetune/esm2_t6_8M_mean \
-  --device auto \
+  --output-dir results/v2_model_scaling/finetuned/esm2_150m_seed42 \
+  --model-name facebook/esm2_t30_150M_UR50D \
+  --device cuda \
   --test-only
 ```
+
+Regenerate the CPU-only V2 report tables and figure with:
+
+```bash
+python scripts/build_v2_report.py
+```
+
+## FastAPI inference service and web demo
+
+V2 includes a typed FastAPI service that loads the selected checkpoint once and
+reuses it across requests. The service exposes a health endpoint, OpenAPI docs,
+and an interactive browser demo.
+
+```bash
+pip install -r requirements-api.txt
+export MODEL_CHECKPOINT=/absolute/path/to/esm2_150m/best_checkpoint.pt
+export MODEL_DEVICE=cpu
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+Open:
+
+- `http://localhost:8000/demo` — interactive prediction demo;
+- `http://localhost:8000/docs` — generated API documentation; and
+- `http://localhost:8000/health` — deployment health check.
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/v1/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"protein_id":"example","sequence":"MKTIIALSYIFCLVFADYKDDDDK"}'
+```
+
+Sequences longer than 1,022 residues automatically use the validated 1,022-aa
+window size, 128-aa overlap, and maximum-window probability aggregation. The
+endpoint returns both the protein-level prediction and window coordinates.
+
+The container excludes model weights. A checkpoint can be mounted locally or
+downloaded from a private S3 object at container startup. CI runs the offline
+and API contract tests and verifies the Docker build. An optional, manually
+triggered AWS workflow demonstrates GitHub OIDC, immutable ECR image tags, and
+ECS task-definition revisions. It has not been used to maintain a public cloud
+endpoint. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the reference setup.
 
 ## Predict one protein
 
@@ -243,8 +441,12 @@ python scripts/predict.py --fasta protein.fasta --device auto
 
 The command prints JSON containing the predicted label, membrane and soluble
 probabilities, sequence length, decision threshold, model, checkpoint epoch,
-and device. Sequences longer than 1,022 residues are rejected rather than
-silently truncated.
+and device. Sequences longer than 1,022 residues are evaluated as overlapping
+1,022-residue windows (validated overlap 128; stride 894). The protein probability is the
+maximum window probability, and the JSON includes every window plus the
+highest-scoring candidate region. This multiple-instance aggregation is an
+experimental inference heuristic and is not an exact transmembrane-segment
+prediction.
 
 ## Limitations
 
@@ -252,12 +454,14 @@ silently truncated.
   coverage for 55.8% of validation proteins and 13.6% of test proteins. The
   random validation split is therefore especially vulnerable to optimistic
   performance estimates.
-- Proteins longer than 1,022 residues are excluded from ESM-2 experiments.
+- Proteins longer than 1,022 residues were excluded from model training and
+  benchmark experiments. Windowed long-protein inference therefore requires
+  a dedicated validation before production use.
 - No explicit license for redistribution of the DeepLoc 1.0 dataset was
   identified, so raw data are not distributed in this repository.
 - The official test split has already been used for exploratory analysis.
-- Fine-tuning currently uses one random seed; run multiple complete training
-  seeds before claiming that the measured improvement is stable.
+- V2 uses three random seeds, but three runs provide only a limited estimate of
+  training variability.
 - Current metrics describe this dataset only; they do not establish reliability
   on proteins from a different organism, database, or experimental protocol.
 - Predictions are computational hypotheses and do not replace experimental
@@ -274,7 +478,8 @@ python scripts/audit_homology.py --overwrite
 ## Next steps
 
 1. Add an integration test for checkpoint loading and inference.
-2. Repeat fine-tuning with multiple random seeds and report mean ± standard
-   deviation.
-3. Create similarity-clustered, homology-aware data splits and rerun all models.
-4. Evaluate the selected model on a genuinely external dataset.
+2. Create similarity-clustered, homology-aware data splits and rerun the
+   selected comparisons.
+3. Confirm the subtype-aware pilot across multiple random seeds.
+4. Improve long-protein calibration and compare maximum probability with
+   length-normalized or top-k bag-level aggregation.
