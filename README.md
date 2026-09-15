@@ -81,37 +81,11 @@ fully untouched final estimate.
 
 ## Results
 
-### V1 foundation: baseline and representation selection
-
-This compact table is retained to show the evidence inherited by V2: mean
-pooling was the strongest frozen representation and fine-tuning improved over
-the frozen model. V1 is context for the upgrade, not the main result of this
-release.
-
-| Method | Representation | Accuracy | Precision | Recall | F1 | ROC-AUC |
-|---|---|---:|---:|---:|---:|---:|
-| Hydrophobicity + Logistic Regression | 35 handcrafted features | 0.815 | 0.788 | 0.749 | 0.768 | 0.871 |
-| Hydrophobicity + Random Forest | 35 handcrafted features | 0.847 | 0.889 | 0.714 | 0.792 | 0.916 |
-| Frozen ESM-2 + Logistic Regression | First token | 0.851 | 0.820 | 0.823 | 0.821 | 0.935 |
-| Frozen ESM-2 + Logistic Regression | Max pooling | 0.834 | 0.805 | 0.792 | 0.798 | 0.911 |
-| Frozen ESM-2 + Logistic Regression | Mean pooling | 0.892 | 0.882 | 0.853 | 0.867 | 0.948 |
-| **Fine-tuned ESM-2** | **Mean pooling** | **0.922** | **0.959** | **0.848** | **0.900** | **0.969** |
-
-Mean pooling was selected using validation F1 among the frozen representations.
-Fine-tuning improved validation F1 by about **3.25 percentage points** and
-ROC-AUC by about **2.08 percentage points** over frozen mean embeddings. Its
-validation confusion counts were TN = 720, FP = 19, FN = 80, and TP = 445.
-
-![Fine-tuned ESM-2 validation confusion matrix](results/figures/finetuned_validation_confusion_matrix.png)
-
-### V1 foundation: shared-cohort ROC comparison
-
-For a fair visual comparison, the classical Random Forest was retrained on the
-ESM-compatible training split and all three methods were evaluated on the same
-1,264 validation proteins. The figure therefore differs from the full-length
-classical-baseline table above, which includes longer proteins.
-
-![Validation ROC comparison of the classical Random Forest, frozen mean ESM-2, and fine-tuned ESM-2](results/figures/validation_roc_model_comparison.png)
+V1 established the baselines, selected mean pooling among frozen ESM-2
+representations, showed the value of fine-tuning, and identified the
+1,022-residue limit. Its complete results, figures, and notebooks remain in the
+[`v1.0.0` snapshot](https://github.com/yangmei25/esm2-protein-localization/tree/v1.0.0).
+The sections below report V2 results only.
 
 ### V2 model scaling across three seeds
 
