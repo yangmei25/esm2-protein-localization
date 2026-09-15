@@ -1,51 +1,54 @@
 # ESM-2 Protein Localization
 
 This project predicts whether a protein is **membrane-associated** or
-**soluble** from its amino-acid sequence. It compares an interpretable
-hydrophobicity baseline with frozen and fine-tuned ESM-2 protein language
-models at 8M, 35M, and 150M parameters:
+**soluble** from its amino-acid sequence. V1 established the scientific
+foundation: biological and classical baselines, comparison of frozen ESM-2
+representations, selection of mean pooling, and an initial 8M fine-tuned model.
+It also exposed the native ESM-2 limit of 1,022 amino-acid residues.
 
-1. frozen ESM-2 embeddings followed by Logistic Regression; and
-2. end-to-end fine-tuning of ESM-2 with a binary classification head.
-
-The original workflow used the practical 8M model. V2 then measured whether
-scaling to 35M and 150M produced a consistent performance gain.
+V2 is the main release. It scales frozen and fine-tuned ESM-2 from 8M to 35M
+and 150M parameters, confirms the selected model across multiple seeds, tests
+external generalization, investigates membrane-subtype failures, evaluates a
+subtype-aware extension, supports long proteins with validated overlapping
+windows, and delivers the selected model through a local FastAPI web service.
 
 ## Project status
 
-The data pipeline, three frozen-embedding experiments, biological baselines,
-fine-tuning, model-size scaling, and three-seed confirmation are complete.
-Fine-tuned ESM-2 150M was selected by validation F1 and achieved mean test
-performance of **0.9220 F1** and **0.9771 ROC-AUC** across three seeds.
+**V1 foundation:** established hydrophobicity and classical baselines, found
+mean pooling to be the strongest frozen ESM-2 representation, showed that
+fine-tuning improved over frozen embeddings, and identified the 1,022-residue
+native context limit.
 
-Single-sequence inference, a 40-test offline and HTTP-contract suite, reproducible
-classical baselines, a pinned Python environment, a locally validated FastAPI
-demo, and deployment-ready container configuration are complete. No public cloud
-endpoint is maintained; AWS configuration is included as an optional reference
-for a future role-specific deployment. Fine-tuned test evaluation is reported as
-exploratory because the test split had already been inspected earlier.
+**V2 upgrades:** selected fine-tuned ESM-2 150M by validation F1 across seeds
+17, 42, and 73; achieved exploratory test F1 **0.9220** and ROC-AUC **0.9771**;
+performed homology-filtered external and subtype analysis; improved Peripheral
+recall in a subtype-aware pilot; validated overlapping windows for long
+proteins; and built a locally validated FastAPI demo with a 40-test suite, CI,
+and deployment-ready container configuration.
 
-## Pipeline
+No public cloud endpoint is maintained. AWS configuration is an optional
+reference for a future role-specific deployment. Test results remain
+exploratory because the test split had already been inspected in V1.
+
+## Version progression
 
 ```text
-DeepLoc protein sequences
-          |
-          v
-Cleaning, deduplication, binary labels, fixed splits
-          |
-          +------------------------------+
-          |                              |
-          v                              v
-Hydrophobicity/composition        ESM-2 8M (<=1,022 residues)
-features                          |
-          |                       +-----------------------+
-          v                       |                       |
-Logistic Regression /             v                       v
-Random Forest              frozen embeddings       end-to-end fine-tuning
-                           (first, mean, max)              |
-                                  |                       |
-                                  v                       v
-                           Logistic Regression       classification head
+V1 foundation
+DeepLoc binary data
+  -> biological/classical baselines
+  -> frozen ESM-2 representation comparison
+  -> mean pooling selected
+  -> initial 8M fine-tuning
+  -> 1,022-residue limitation identified
+
+V2 upgrades
+8M / 35M / 150M frozen and fine-tuned comparison
+  -> three-seed confirmation
+  -> 150M fine-tuned model selected
+  -> homology-filtered external evaluation
+  -> subtype diagnosis and subtype-aware pilot
+  -> validated long-protein overlapping windows
+  -> FastAPI inference service and interactive web demo
 ```
 
 The frozen workflow does **not** update ESM-2. It extracts one 320-dimensional
@@ -78,7 +81,12 @@ fully untouched final estimate.
 
 ## Results
 
-### Validation comparison
+### V1 foundation: baseline and representation selection
+
+This compact table is retained to show the evidence inherited by V2: mean
+pooling was the strongest frozen representation and fine-tuning improved over
+the frozen model. V1 is context for the upgrade, not the main result of this
+release.
 
 | Method | Representation | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---:|---:|---:|---:|---:|
@@ -96,7 +104,7 @@ validation confusion counts were TN = 720, FP = 19, FN = 80, and TP = 445.
 
 ![Fine-tuned ESM-2 validation confusion matrix](results/figures/finetuned_validation_confusion_matrix.png)
 
-### ROC comparison on a shared validation cohort
+### V1 foundation: shared-cohort ROC comparison
 
 For a fair visual comparison, the classical Random Forest was retrained on the
 ESM-compatible training split and all three methods were evaluated on the same
@@ -240,7 +248,7 @@ this remains an exploratory test estimate rather than a completely untouched
 final benchmark. A genuinely external or homology-controlled test set is still
 needed for a strong generalization claim.
 
-### Long-protein window validation
+### V2 long-protein window validation
 
 Long-protein inference was evaluated on 564 DeepLoc 2.1 proteins longer than
 1,022 residues after removing exact V1 overlaps and V1 training homologs at
@@ -256,16 +264,6 @@ The long-protein result is meaningfully weaker and more seed-sensitive than
 the native-length results. In particular, false-positive rate was 0.1349 ±
 0.0697, so maximum-window aggregation remains experimental rather than
 equivalent to the model's native single-window inference.
-
-### V1 exploratory fine-tuned test result
-
-| Test N | Accuracy | Precision | Recall | F1 | ROC-AUC |
-|---:|---:|---:|---:|---:|---:|
-| 1,571 | 0.916 | 0.921 | 0.877 | 0.898 | 0.961 |
-
-At threshold 0.5, the test confusion counts were TN = 855, FP = 50, FN = 82,
-and TP = 584. These sum to all 1,571 test proteins. The result is encouragingly
-close to validation performance, but it is not a fully untouched final estimate.
 
 ## Repository structure
 
