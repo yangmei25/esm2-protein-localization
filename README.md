@@ -19,12 +19,13 @@ mean pooling to be the strongest frozen ESM-2 representation, showed that
 fine-tuning improved over frozen embeddings, and identified the 1,022-residue
 native context limit.
 
-**V2 upgrades:** selected fine-tuned ESM-2 150M by validation F1 across seeds
-17, 42, and 73; achieved exploratory test F1 **0.9220** and ROC-AUC **0.9771**;
-performed homology-filtered external and subtype analysis; improved Peripheral
-recall in a subtype-aware pilot; validated overlapping windows for long
-proteins; and built a locally validated FastAPI demo with a 40-test suite, CI,
-and deployment-ready container configuration.
+**V2 upgrades:** compared frozen and fine-tuned ESM-2 at 8M, 35M, and 150M
+parameters, found consistent gains from fine-tuning and model scaling, and
+selected the fine-tuned 150M model across seeds 17, 42, and 73. V2 then tested
+external generalization, investigated and improved Peripheral recall in a
+subtype-aware pilot, validated overlapping-window inference for long proteins,
+and delivered the selected model through a locally validated FastAPI demo with
+automated tests, CI, and deployment-ready container configuration.
 
 No public cloud endpoint is maintained. AWS configuration is an optional
 reference for a future role-specific deployment. Test results remain
