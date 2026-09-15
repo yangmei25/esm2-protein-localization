@@ -428,8 +428,9 @@ prediction.
   random validation split is therefore especially vulnerable to optimistic
   performance estimates.
 - Proteins longer than 1,022 residues were excluded from model training and
-  benchmark experiments. Windowed long-protein inference therefore requires
-  a dedicated validation before production use.
+  native-length benchmarks. The validated windowed approach is available, but
+  its lower performance is reported separately and should not be treated as
+  equivalent to native-length inference.
 - No explicit license for redistribution of the DeepLoc 1.0 dataset was
   identified, so raw data are not distributed in this repository.
 - The official test split has already been used for exploratory analysis.
@@ -441,18 +442,8 @@ prediction.
   localization evidence.
 
 See [`docs/SCIENTIFIC_LIMITATIONS.md`](docs/SCIENTIFIC_LIMITATIONS.md) for the
-full audit status and research-quality roadmap. Reproduce the similarity audit
-with:
+full scientific audit. Reproduce the similarity audit with:
 
 ```bash
 python scripts/audit_homology.py --overwrite
 ```
-
-## Next steps
-
-1. Add an integration test for checkpoint loading and inference.
-2. Create similarity-clustered, homology-aware data splits and rerun the
-   selected comparisons.
-3. Confirm the subtype-aware pilot across multiple random seeds.
-4. Improve long-protein calibration and compare maximum probability with
-   length-normalized or top-k bag-level aggregation.
