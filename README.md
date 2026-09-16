@@ -1,18 +1,38 @@
 # ESM-2 Protein Localization
 
-This project predicts whether a protein is **membrane-associated** or
-**soluble** from its amino-acid sequence. V1 established the scientific
-foundation: biological and classical baselines, comparison of frozen ESM-2
-representations, selection of mean pooling, and an initial 8M fine-tuned model.
-It also exposed the native ESM-2 limit of 1,022 amino-acid residues.
+An end-to-end protein language-model project for classifying proteins as
+**membrane-associated** or **soluble** from amino-acid sequence. The repository
+connects biological and classical baselines, frozen ESM-2 representations,
+multi-seed fine-tuning, homology-filtered external evaluation, subtype failure
+analysis, long-protein inference, and a tested FastAPI service.
 
-V2 is the main release. It scales frozen and fine-tuned ESM-2 from 8M to 35M
-and 150M parameters, confirms the selected model across multiple seeds, tests
-external generalization, investigates membrane-subtype failures, evaluates a
-subtype-aware extension, supports long proteins with validated overlapping
-windows, and delivers the selected model through a local FastAPI web service.
+## At a glance
 
-## Project status
+| Evidence | Result |
+|---|---|
+| Model selection | Fine-tuned ESM-2 150M achieved **0.9363 validation F1** and **0.9819 ROC-AUC** across three seeds |
+| External generalization | Homology-filtered DeepLoc 2.1 cohort: **0.8116 F1** and **0.9021 ROC-AUC** |
+| Failure analysis | Peripheral membrane proteins were the main weak class, with **0.3254 recall** in the binary model |
+| Targeted improvement | Subtype-aware modeling increased Peripheral recall to **0.5494**, while the class remained an explicit limitation |
+| Long proteins | Validated overlapping-window inference on **564 proteins longer than 1,022 residues** |
+| Software delivery | Typed **FastAPI** service, web interface, **Docker**, **GitHub Actions**, and **40 automated tests** |
+
+![Fine-tuned ESM-2 model scaling across three seeds](results/figures/v2_result_2_multiseed_scaling.png)
+
+## What this project demonstrates
+
+- Comparison of hydrophobicity, Logistic Regression, Random Forest, frozen
+  ESM-2, and fine-tuned ESM-2 rather than evaluation against a weak baseline.
+- Architecture selection across 8M, 35M, and 150M models with three-seed
+  confirmation of the selected model.
+- Evaluation beyond a random split through homology filtering, distribution-
+  shift analysis, and membrane-subtype diagnostics.
+- A research-to-inference workflow with reusable code, automated checks, an
+  HTTP API, a lightweight web interface, and container configuration.
+- Explicit reporting of post-hoc analyses, inspected test data, remaining
+  failure modes, and claims the evidence does not support.
+
+## Project status and scope
 
 **V1 foundation:** established hydrophobicity and classical baselines, found
 mean pooling to be the strongest frozen ESM-2 representation, showed that
