@@ -1,4 +1,4 @@
-# ESM-2 Protein Localization
+# ESM-2 Protein Localization Benchmark and Inference System
 
 An end-to-end protein language-model project for classifying proteins as
 **membrane-associated** or **soluble** from amino-acid sequence. The repository
@@ -105,7 +105,7 @@ fully untouched final estimate.
 V1 established the baselines, selected mean pooling among frozen ESM-2
 representations, showed the value of fine-tuning, and identified the
 1,022-residue limit. Its complete results, figures, and notebooks remain in the
-[`v1.0.0` snapshot](https://github.com/yangmei25/esm2-protein-localization/tree/v1.0.0).
+[`v1.0.0` snapshot](https://github.com/yangmei25/esm2-protein-localization-benchmark/tree/v1.0.0).
 The sections below report V2 results only.
 
 ### V2 model scaling across three seeds
@@ -285,7 +285,7 @@ equivalent to the model's native single-window inference.
 
 V2 is a Python-first workflow and does not depend on notebooks. The V1
 walkthrough and Colab notebook remain preserved under the GitHub
-[`v1.0.0` tag](https://github.com/yangmei25/esm2-protein-localization/tree/v1.0.0/notebooks).
+[`v1.0.0` tag](https://github.com/yangmei25/esm2-protein-localization-benchmark/tree/v1.0.0/notebooks).
 Local exploratory notebooks are kept in the Git-ignored `notebooks_for_me/`
 directory and are not included in the V2 release.
 
@@ -295,8 +295,8 @@ Python 3.11.5 and the direct dependency versions in `requirements.txt` form the
 verified local environment.
 
 ```bash
-git clone https://github.com/yangmei25/esm2-protein-localization.git
-cd esm2-protein-localization
+git clone https://github.com/yangmei25/esm2-protein-localization-benchmark.git
+cd esm2-protein-localization-benchmark
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

@@ -10,7 +10,7 @@ from urllib.request import urlopen
 
 
 DEFAULT_URL = (
-    "https://github.com/yangmei25/esm2-protein-localization/releases/download/"
+    "https://github.com/yangmei25/esm2-protein-localization-benchmark/releases/download/"
     "model-v1.0/best_checkpoint.pt"
 )
 DEFAULT_OUTPUT = Path("results/finetune/esm2_t6_8M_mean/best_checkpoint.pt")
